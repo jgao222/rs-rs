@@ -92,7 +92,7 @@ fn get_display_setting(index: u32) -> Option<DEVMODEA> {
     let mut devmode: DEVMODEA = Default::default();
     unsafe {
         if EnumDisplaySettingsA(
-            PCSTR::null(),
+            PCSTR::null(), // passing null here means default display device
             windows::Win32::Graphics::Gdi::ENUM_DISPLAY_SETTINGS_MODE(index),
             &mut devmode,
         )
