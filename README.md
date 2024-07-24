@@ -1,5 +1,5 @@
 # Resolution Switcher
-A simple tray icon menu for changing the screen resolution in Rust.
+A simple tray icon menu for changing the screen resolution, written in Rust.
 
 Using [windows-rs](https://github.com/microsoft/windows-rs) and [tray-item](https://github.com/olback/tray-item-rs).
 - Supports Windows only
