@@ -1,6 +1,9 @@
 #![windows_subsystem = "windows"] // disable the console on windows when running exe
 
-use std::{sync::mpsc, time::Duration};
+use std::{
+    sync::mpsc::{self, SyncSender},
+    time::Duration,
+};
 
 use windows::{
     core::PCSTR,
@@ -13,6 +16,13 @@ enum Message {
     Quit,
     SwitchResolution(DEVMODEA),
 }
+
+const FAVORITES: [(u32, u32, u32); 4] = [
+    (1280, 720, 60),
+    (1920, 1080, 60),
+    (2560, 1440, 60),
+    (3840, 2160, 60),
+];
 
 fn main() {
     let mut tray =
@@ -30,20 +40,26 @@ fn main() {
         })
         .collect::<Vec<DEVMODEA>>();
 
+    let mut fav_devmodes = vec![];
+    let mut other_devmodes = vec![];
+
+    for d in &dev_modes {
+        if FAVORITES.contains(&(d.dmPelsWidth, d.dmPelsHeight, d.dmDisplayFrequency)) {
+            fav_devmodes.push(*d);
+        } else {
+            other_devmodes.push(*d);
+        }
+    }
+
     let (tx, rx) = mpsc::sync_channel(1);
 
-    for devmode in dev_modes {
-        let (w, h, r) = (
-            devmode.dmPelsWidth,
-            devmode.dmPelsHeight,
-            devmode.dmDisplayFrequency,
-        );
-        let tx_clone = tx.clone();
-        tray.add_menu_item(format!("{}x{}@{}", w, h, r).as_str(), move || {
-            tx_clone.send(Message::SwitchResolution(devmode)).unwrap();
-        })
-        .unwrap()
-    }
+    // favorites
+    tray.inner_mut().add_label("Favorites").unwrap();
+    add_modes(&mut tray, &tx, fav_devmodes);
+    tray.inner_mut().add_separator().unwrap();
+
+    // others
+    add_modes(&mut tray, &tx, other_devmodes);
 
     // quit button
     tray.inner_mut().add_separator().unwrap();
@@ -102,5 +118,20 @@ fn get_display_setting(index: u32) -> Option<DEVMODEA> {
         } else {
             Option::None
         }
+    }
+}
+
+fn add_modes(tray: &mut TrayItem, tx: &SyncSender<Message>, modes: Vec<DEVMODEA>) {
+    for devmode in modes {
+        let (w, h, r) = (
+            devmode.dmPelsWidth,
+            devmode.dmPelsHeight,
+            devmode.dmDisplayFrequency,
+        );
+        let tx_clone = tx.clone();
+        tray.add_menu_item(format!("{}x{}@{}", w, h, r).as_str(), move || {
+            tx_clone.send(Message::SwitchResolution(devmode)).unwrap();
+        })
+        .unwrap()
     }
 }
